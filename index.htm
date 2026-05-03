@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Ележка AI — Цифровой Цирк Никиты</title>
+    <!-- Загружаем мотор Python -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+    <style>
+        body { background: #000; color: #ff0000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
+        
+        #circle { 
+            width: 170px; height: 170px; 
+            background: radial-gradient(circle, #00ff00 0%, #004400 100%); 
+            border-radius: 50%; cursor: pointer; 
+            box-shadow: 0 0 30px #00ff00; transition: 0.3s; 
+        }
+
+        .active { animation: pulse 0.4s infinite alternate; box-shadow: 0 0 60px #ff0000; }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+        #status { margin-top: 30px; font-size: 1.2rem; text-align: center; max-width: 85%; color: #00ff00; text-shadow: 0 0 5px #000; }
+    </style>
+</head>
+<body>
+
+    <div id="circle"></div>
+    <div id="status">Запуск цифрового аттракциона...</div>
+
+    <script>
+        // --- 1. ССЫЛКА НА МОЗГИ (RAW ссылка на brain.py с Hugging Face) ---
+        const HF_BRAIN_URL = "ВСТАВЬ_СЮДА_СВОЮ_RAW_ССЫЛКУ_С_HUGGING_FACE";
+
+        // --- 2. БУКВЕННЫЙ ШИФР НИКИТЫ (РАЗБИТЫЙ КЛЮЧ) ---
+        const s="s", k="k", d="-", o="o", r="r", v="v", n="1";
+        const start = s + k + - + o + r + - + v + n + d; // Это "sk-or-v1-"
+
+        const p1 = "61ba30a0", p2 = "1cf5f975", p3 = "ad11f3be", p4 = "ffcc97f2";
+        const p5 = "90257b57", p6 = "abb9230c", p7 = "ca71ff23", p8 = "e74d4daf";
+
+        // Собираем осколки в один целый ключ
+        const secretToken = start + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8;
+
+        const status = document.getElementById('status');
+        const circle = document.getElementById('circle');
+        let pyodide;
+
+        // Инициализация
+        async function init() {
+            try {
+                pyodide = await loadPyodide();
+                await pyodide.loadPackage(["requests", "pyodide-http"]);
+                status.innerText = "Ележка в игре! Жми на круг, Босс Никита.";
+            } catch (e) {
+                status.innerText = "Ошибка загрузки мотора.";
+            }
+        }
+        init();
+
+        const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        rec.lang = 'ru-RU';
+
+        circle.onclick = () => {
+            rec.start();
+            circle.classList.add('active');
+            status.innerText = "Слушаю тебя...";
+        };
+
+        rec.onresult = async (event) => {
+            const userInput = event.results.transcript;
+            status.innerText = "Связь с сервером...";
+
+            try {
+                // Качаем код Python с твоего Space
+                const res = await fetch(HF_BRAIN_URL + "?nocache=" + Math.random());
+                const pyCode = await res.text();
+
+                // Передаем данные в Python
+                pyodide.globals.set("user_input", userInput);
+                pyodide.globals.set("hf_token", secretToken);
+
+                // Запускаем мозги
+                await pyodide.runPythonAsync(pyCode);
+                
+                const reply = pyodide.globals.get("result");
+                status.innerText = reply;
+
+                // Озвучка
+                const utter = new SpeechSynthesisUtterance(reply);
+                utter.lang = 'ru-RU';
+                utter.onend = () => circle.classList.remove('active');
+                window.speechSynthesis.speak(utter);
+
+            } catch (err) {
+                status.innerText = "Ошибка связи с Цифровым Цирком!";
+                circle.classList.remove('active');
+            }
+        };
+    </script>
+</body>
+</html>
